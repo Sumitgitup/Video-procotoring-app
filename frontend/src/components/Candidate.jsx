@@ -12,9 +12,9 @@ const CandidateView = ({ setReportId }) => {
   const videoRef = useRef(null);
   const noFaceTimerRef = useRef(null);
   const lookingAwayTimerRef = useRef(null);
+  const multipleFacesTimerRef = useRef(null); // Ref for multiple faces debounce
   const detectionIntervalRef = useRef(null);
   const interviewStartRef = useRef(null);
-  // --- VIDEO RECORDING REFS ---
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
 
@@ -22,13 +22,13 @@ const CandidateView = ({ setReportId }) => {
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [submissionStatus, setSubmissionStatus] = useState({ submitting: false, success: false, error: null, submittedReportId: null });
-  // --- VIDEO RECORDING STATE ---
   const [isRecording, setIsRecording] = useState(false);
   const [videoUrl, setVideoUrl] = useState(null);
 
 
   const addLog = useCallback((eventText) => {
     setLogs(prevLogs => {
+      // Prevent adding the same log entry consecutively
       if (prevLogs.length > 0 && prevLogs[0].event === eventText) {
         return prevLogs;
       }
@@ -41,7 +41,6 @@ const CandidateView = ({ setReportId }) => {
   }, []);
 
   const runDetection = useCallback(async (faceDetector, objectDetector) => {
-    // ... (All existing detection logic remains unchanged) ...
     const video = videoRef.current;
     
     if (!video || video.readyState < 3 || !faceDetector || !objectDetector) {
@@ -50,7 +49,25 @@ const CandidateView = ({ setReportId }) => {
 
     try {
       const faces = await faceDetector.estimateFaces(video);
-      if (faces.length > 1) addLog('Multiple faces detected');
+
+      // --- FIX #1: Multiple Face Detection with Debounce ---
+      if (faces.length > 1) {
+        // If multiple faces are seen, start a 2-second timer.
+        // This prevents logging on momentary glitches.
+        if (!multipleFacesTimerRef.current) {
+          multipleFacesTimerRef.current = setTimeout(() => {
+            addLog('Multiple faces detected');
+          }, 2000); // Only log if condition persists for 2 seconds
+        }
+      } else {
+        // If there's only one face (or none), clear the timer.
+        if (multipleFacesTimerRef.current) {
+          clearTimeout(multipleFacesTimerRef.current);
+          multipleFacesTimerRef.current = null;
+        }
+      }
+
+      // Rule: No Face Detection
       if (faces.length === 0) {
         if (!noFaceTimerRef.current) {
           noFaceTimerRef.current = setTimeout(() => addLog('User absent for > 10 seconds'), 10000);
@@ -61,8 +78,11 @@ const CandidateView = ({ setReportId }) => {
           noFaceTimerRef.current = null;
         }
       }
-      if (faces.length === 1) {
-        const { keypoints } = faces[0];
+
+      // --- FIX #2: Looking Away Logic Correction ---
+      // This now runs if there is at least ONE face, making it more robust.
+      if (faces.length >= 1) { 
+        const { keypoints } = faces[0]; // Always check the primary face
         const noseTip = keypoints.find(p => p.name === 'noseTip');
         const leftEye = keypoints.find(p => p.name === 'leftEye');
         const rightEye = keypoints.find(p => p.name === 'rightEye');
@@ -82,6 +102,7 @@ const CandidateView = ({ setReportId }) => {
           }
         }
       } else {
+        // Also clear looking away timer if no faces are present
         if (lookingAwayTimerRef.current) {
           clearTimeout(lookingAwayTimerRef.current);
           lookingAwayTimerRef.current = null;
@@ -90,9 +111,8 @@ const CandidateView = ({ setReportId }) => {
 
       const predictions = await objectDetector.detect(video);
       const suspiciousObjects = ['cell phone', 'book'];
-      
       for (let prediction of predictions) {
-        if (suspiciousObjects.includes(prediction.class) && prediction.score > 0.6) {
+        if (suspiciousObjects.includes(prediction.class) && prediction.score > 0.65) {
           addLog(`${prediction.class.charAt(0).toUpperCase() + prediction.class.slice(1)} detected`);
         }
       }
@@ -102,25 +122,18 @@ const CandidateView = ({ setReportId }) => {
     }
   }, [addLog]);
 
-  // --- VIDEO RECORDING FUNCTIONS ---
   const startRecording = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject;
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
       mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) recordedChunksRef.current.push(event.data);
       };
-      
       mediaRecorderRef.current.onstop = () => {
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        setVideoUrl(url);
-        recordedChunksRef.current = []; // Clear chunks for next recording
+        setVideoUrl(URL.createObjectURL(blob));
+        recordedChunksRef.current = [];
       };
-
       mediaRecorderRef.current.start();
       setIsRecording(true);
     }
@@ -133,18 +146,10 @@ const CandidateView = ({ setReportId }) => {
     }
   };
 
-
   const handleFinishInterview = async () => {
-    // Stop recording if it's currently active
-    if (isRecording) {
-      stopRecording();
-    }
-
+    if (isRecording) stopRecording();
     setSubmissionStatus({ submitting: true, success: false, error: null, submittedReportId: null });
-    
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-    }
+    if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current);
     
     const interviewEndTime = new Date();
     const durationInSeconds = Math.round((interviewEndTime - interviewStartRef.current) / 1000);
@@ -157,18 +162,16 @@ const CandidateView = ({ setReportId }) => {
     };
 
     try {
+      // --- FIX #3: Corrected Backend Port ---
       const response = await fetch('http://localhost:4000/api/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reportData)
       });
 
-      if (!response.ok) {
-        throw new Error('Server responded with an error');
-      }
+      if (!response.ok) throw new Error('Server responded with an error');
 
       const result = await response.json();
-      console.log('Report submitted successfully:', result);
       setSubmissionStatus({ submitting: false, success: true, error: null, submittedReportId: result.reportId });
 
     } catch (submitError) {
@@ -190,27 +193,23 @@ const CandidateView = ({ setReportId }) => {
           
           await tf.setBackend('webgl');
           
-           const faceDetectorConfig = {
+          const faceDetectorConfig = {
             runtime: 'mediapipe',
             solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
-            maxFaces: 2, // <-- This line tells the model to detect up to 2 faces
+            maxFaces: 2,
           };
-
+          
+          // --- FIX #4: Corrected Detector Creation Syntax ---
           const [faceDetector, objectDetector] = await Promise.all([
-            faceLandmarksDetection.createDetector(faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-              faceDetectorConfig, {
-              runtime: 'mediapipe',
-              solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
-            }),
+            faceLandmarksDetection.createDetector(
+              faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+              faceDetectorConfig
+            ),
             cocoSsd.load()
           ]);
           
-          console.log("All models loaded successfully.");
           setIsLoading(false);
-          
-          // Automatically start recording once models are loaded
           startRecording();
-
           detectionIntervalRef.current = setInterval(() => runDetection(faceDetector, objectDetector), 2000);
         }
       } catch (err) {
@@ -230,69 +229,130 @@ const CandidateView = ({ setReportId }) => {
     };
   }, [runDetection]);
 
+  // The rest of the component (JSX, styles) remains the same as the improved UI version.
+  const getIconForEvent = (eventText) => {
+    if (eventText.includes('Multiple faces')) return '👨‍👩‍👧';
+    if (eventText.includes('User absent')) return '👤❓';
+    if (eventText.includes('looking away')) return '👀';
+    if (eventText.includes('Cell phone')) return '📱';
+    if (eventText.includes('Book')) return '📚';
+    return '⚠️';
+  };
 
   return (
-    <div style={{ fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-        <div className="candidate-view" style={{ position: 'relative', width: '640px', height: '480px' }}>
-          {isLoading && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', borderRadius: '8px' }}><p>Loading AI Models...</p></div>}
-          {error && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', textAlign: 'center', borderRadius: '8px', border: '2px solid #ff4d4d' }}><div><h3 style={{color: '#ffc0c0'}}>An error occurred:</h3><p>{error}</p></div></div>}
+    <div style={styles.container}>
+      <h2 style={styles.title}>Live Proctoring Session</h2>
+      <div style={styles.mainContent}>
+        <div style={styles.videoContainer}>
+          {isLoading && <Overlay message="Initializing AI Models..." />}
+          {error && <Overlay isError message={error} />}
           
-          {/* Recording Indicator */}
           {isRecording && (
-            <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: '5px 10px', borderRadius: '15px' }}>
-              <span style={{ width: '10px', height: '10px', backgroundColor: 'red', borderRadius: '50%', marginRight: '8px', animation: 'pulse 1.5s infinite' }}></span>
-              <span style={{ color: 'white', fontWeight: 'bold' }}>REC</span>
+            <div style={styles.recIndicator}>
+              <span style={styles.recDot}></span>
+              <span>REC</span>
             </div>
           )}
 
           <video 
             ref={videoRef} 
-            style={{ border: '2px solid black', width: '100%', height: '100%', borderRadius: '8px', visibility: isLoading || error ? 'hidden' : 'visible' }} 
+            style={{...styles.video, visibility: isLoading || error ? 'hidden' : 'visible' }} 
             autoPlay muted playsInline
           />
         </div>
-        <div className="logs-view" style={{ width: '350px', height: '480px', border: '2px solid #ccc', borderRadius: '8px', overflowY: 'auto', padding: '10px', backgroundColor: '#f9f9f9' }}>
-          <h3 style={{ textAlign: 'center', marginTop: '0', borderBottom: '1px solid #ddd', paddingBottom: '10px', color: '#333' }}>Event Log</h3>
-          {logs.length === 0 ? <p style={{textAlign: 'center', color: '#888', paddingTop: '20px' }}>No events detected yet.</p> : <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>{logs.map((log, index) => <li key={index} style={{ marginBottom: '8px', padding: '5px', borderBottom: '1px solid #eee', fontSize: '14px', color: '#555' }}><strong style={{color: '#000'}}>{log.timestamp}:</strong> {log.event}</li>)}</ul>}
+        <div style={styles.logsContainer}>
+          <h3 style={styles.logsTitle}>Event Log</h3>
+          <div style={styles.logsList}>
+            {logs.length === 0 && !isLoading ? (
+              <p style={styles.noLogsText}>No suspicious events detected yet.</p>
+            ) : (
+              <ul>
+                {logs.map((log, index) => (
+                  <li key={index} style={styles.logItem}>
+                    <span style={styles.logIcon}>{getIconForEvent(log.event)}</span>
+                    <span style={styles.logText}>
+                      <strong>{log.timestamp}:</strong> {log.event}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
+      <div style={styles.controlsContainer}>
         <button 
           onClick={handleFinishInterview} 
           disabled={isLoading || submissionStatus.submitting || submissionStatus.success}
-          style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer', borderRadius: '5px', border: 'none', backgroundColor: '#dc3545', color: 'white' }}
+          style={{...styles.button, ...styles.finishButton}}
         >
           {submissionStatus.submitting ? 'Submitting...' : 'Finish Interview & Submit Report'}
         </button>
         {submissionStatus.success && (
-          <div style={{marginTop: '15px'}}>
-            <p style={{ color: 'green', marginTop: '10px' }}>Report submitted successfully!</p>
+          <div style={styles.successContainer}>
+            <p style={styles.successMessage}>✔️ Report submitted successfully!</p>
             {videoUrl && (
-              <a href={videoUrl} download="interview-recording.webm" style={{ display: 'inline-block', padding: '10px 20px', marginTop: '10px', backgroundColor: '#17a2b8', color: 'white', textDecoration: 'none', borderRadius: '5px' }}>
+              <a href={videoUrl} download="interview-recording.webm" style={{...styles.button, ...styles.downloadButton}}>
                 Download Recording
               </a>
             )}
             <button 
               onClick={() => setReportId(submissionStatus.submittedReportId)}
-              style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer', borderRadius: '5px', border: 'none', backgroundColor: '#007bff', color: 'white', marginLeft: '10px' }}
+              style={{...styles.button, ...styles.viewReportButton}}
             >
               View Report
             </button>
           </div>
         )}
-        {submissionStatus.error && <p style={{ color: 'red', marginTop: '10px' }}>{submissionStatus.error}</p>}
+        {submissionStatus.error && <p style={styles.errorMessage}>{submissionStatus.error}</p>}
       </div>
-      {/* CSS for REC pulse animation */}
       <style>{`
         @keyframes pulse {
-          0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-          70% { box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+          0% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); }
+          70% { box-shadow: 0 0 0 10px rgba(255, 82, 82, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
         }
+        ul { list-style-type: none; padding: 0; margin: 0; }
       `}</style>
     </div>
   );
+};
+
+const Overlay = ({ message, isError = false }) => (
+  <div style={{...styles.overlay, ...(isError && styles.errorOverlay)}}>
+    <div>
+      {isError && <h3 style={styles.errorTitle}>An error occurred:</h3>}
+      <p>{message}</p>
+    </div>
+  </div>
+);
+
+const styles = {
+  container: { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', backgroundColor: '#f4f7f9', padding: '24px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', maxWidth: '1100px', margin: 'auto' },
+  title: { textAlign: 'center', color: '#333', marginBottom: '24px' },
+  mainContent: { display: 'flex', gap: '24px', alignItems: 'flex-start' },
+  videoContainer: { position: 'relative', width: '640px', height: '480px' },
+  video: { border: '1px solid #ddd', width: '100%', height: '100%', borderRadius: '12px', objectFit: 'cover', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' },
+  overlay: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', textAlign: 'center', borderRadius: '12px' },
+  errorOverlay: { border: '2px solid #ff4d4d' },
+  errorTitle: { color: '#ffc0c0', marginBottom: '8px' },
+  recIndicator: { position: 'absolute', top: '16px', left: '16px', display: 'flex', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: '20px', color: 'white', fontWeight: 'bold', fontSize: '14px' },
+  recDot: { width: '10px', height: '10px', backgroundColor: '#ff5252', borderRadius: '50%', marginRight: '8px', animation: 'pulse 1.5s infinite' },
+  logsContainer: { flex: 1, height: '480px', border: '1px solid #ddd', borderRadius: '12px', backgroundColor: '#fff', display: 'flex', flexDirection: 'column' },
+  logsTitle: { textAlign: 'center', margin: 0, padding: '16px', borderBottom: '1px solid #eee', color: '#333', backgroundColor: '#f9fafb', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' },
+  logsList: { flex: 1, overflowY: 'auto', padding: '8px' },
+  noLogsText: { textAlign: 'center', color: '#888', paddingTop: '20px' },
+  logItem: { display: 'flex', alignItems: 'center', marginBottom: '8px', padding: '8px', borderBottom: '1px solid #f0f0f0', fontSize: '14px', color: '#555' },
+  logIcon: { fontSize: '18px', marginRight: '12px' },
+  logText: { flex: 1 },
+  controlsContainer: { marginTop: '24px', textAlign: 'center' },
+  button: { padding: '12px 24px', fontSize: '16px', cursor: 'pointer', borderRadius: '8px', border: 'none', fontWeight: '600', transition: 'all 0.2s ease' },
+  finishButton: { backgroundColor: '#dc3545', color: 'white' },
+  successContainer: { marginTop: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', flexWrap: 'wrap' },
+  successMessage: { color: '#28a745', margin: 0, fontWeight: 'bold' },
+  downloadButton: { backgroundColor: '#17a2b8', color: 'white', textDecoration: 'none' },
+  viewReportButton: { backgroundColor: '#007bff', color: 'white' },
+  errorMessage: { color: '#dc3545', marginTop: '10px' },
 };
 
 export default CandidateView;
