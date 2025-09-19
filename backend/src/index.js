@@ -3,26 +3,45 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 
 // --- FIREBASE SETUP ---
-const serviceAccount = require('../serviceAccountKey.json');
+// This logic now checks for an environment variable first,
+// which is necessary for deployment. It falls back to the local file for development.
+try {
+  const serviceAccountString = process.env.FIREBASE_CREDENTIALS;
+  if (serviceAccountString) {
+    // If running on the server (Render), parse the credentials from the environment variable
+    const serviceAccount = JSON.parse(serviceAccountString);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Initialized Firebase from environment variable.");
+  } else {
+    // If running locally, use the serviceAccountKey.json file
+    const serviceAccount = require('../serviceAccountKey.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Initialized Firebase from local file.");
+  }
+} catch (error) {
+  console.error("Firebase initialization failed:", error);
+  process.exit(1); // Exit if Firebase can't be initialized
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
 
 const db = admin.firestore();
 // --- END FIREBASE SETUP ---
 
 const app = express();
-const PORT = 4000;
+const PORT = process.env.PORT || 4000; // Use port provided by Render or default to 4000
 
 app.use(cors());
 app.use(express.json());
 
+// ... (the rest of your API routes are unchanged) ...
 app.get('/', (req, res) => {
   res.status(200).send('Backend server is running!');
 });
 
-// Endpoint to SAVE a new report
 app.post('/api/report', async (req, res) => {
   try {
     const reportData = req.body;
@@ -42,7 +61,6 @@ app.post('/api/report', async (req, res) => {
   }
 });
 
-// NEW: Endpoint to GET a specific report by its ID
 app.get('/api/report/:id', async (req, res) => {
   try {
     const reportId = req.params.id;
@@ -62,11 +80,6 @@ app.get('/api/report/:id', async (req, res) => {
 
 
 app.listen(PORT, () => {
-  console.log(`Server is listening on http://localhost:${PORT}`);
+  console.log(`Server is listening on port ${PORT}`);
 });
-
-
-
-// http://localhost:8080/api/report/[YOUR_DOCUMENT_ID]
-    
 
