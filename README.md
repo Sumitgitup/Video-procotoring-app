@@ -1,127 +1,131 @@
-Video Interview Proctoring System
-This project is a comprehensive video proctoring system designed to monitor candidates during online interviews. It uses real-time, browser-based AI models to detect a candidate's focus and identify any unauthorized items in their video feed. At the end of the session, it generates a detailed integrity report.
+📹 Video Interview Proctoring System
+A smart proctoring tool that uses browser-based AI to monitor candidates during video interviews, ensuring integrity by detecting focus loss and unauthorized items.
 
-[Live Demo Link Placeholder] - (You can add your Vercel/Netlify link here after deployment)
+✨ Core Features
+👨‍💻 Real-time Focus Detection:
 
-🎯 Core Features
-Real-time Focus Detection:
+Looking Away: Flags when a candidate turns their head away from the screen for more than 5 seconds.
 
-Detects if the candidate is looking away from the screen for more than 5 seconds.
+User Absent: Flags when no face is detected in the frame for more than 10 seconds.
 
-Flags if no face is present in the frame for more than 10 seconds.
+Multiple Faces: Instantly flags if more than one face appears in the video.
 
-Flags if multiple faces are detected in the video feed.
+📱 Suspicious Item Detection:
 
-Suspicious Item Detection:
+Identifies unauthorized items like a cell phone or book in the candidate's view.
 
-Uses object detection to identify unauthorized items like mobile phones and books.
+📄 Automated Reporting:
 
-Automated Reporting:
+Logs all suspicious events with timestamps in a clean interface.
 
-Logs all flagged events with timestamps.
+Calculates a final Integrity Score based on the number and type of flagged events.
 
-Submits a final report to a database upon completion.
+Saves a permanent report to a database for later review.
 
-Calculates and displays a final "Integrity Score" based on the number and severity of flagged events.
-
-🛠️ Technology Stack
-This project is a full-stack application built with modern web technologies. All AI processing is done client-side in the browser for maximum privacy and performance.
+🛠️ Tech Stack
+This project is a full-stack application that performs all heavy AI processing directly in the user's browser, ensuring privacy and real-time performance.
 
 Component
 
 Technology
 
-Description
+Purpose
 
 Frontend
 
-React.js (with Vite)
+React.js (Vite)
 
-A fast, modern UI library for building the single-page application.
+Building the interactive user interface.
 
 AI / ML
 
 TensorFlow.js
 
-The core library for running machine learning models in the browser.
+Running AI models directly in the browser.
 
-Face Detection
+Face Tracking
 
-@tensorflow-models/face-landmarks-detection (with MediaPipe)
+MediaPipe Face Mesh
 
-A highly optimized model for detecting 478 facial landmarks in real-time.
+To detect facial landmarks for focus analysis.
 
 Object Detection
 
-@tensorflow-models/coco-ssd
+COCO-SSD Model
 
-A lightweight model for detecting 90 common objects.
+To identify unauthorized objects.
 
 Backend
 
 Node.js & Express.js
 
-A simple and fast runtime for building the server-side API.
+Creating the API to save and retrieve reports.
 
 Database
 
 Google Firestore
 
-A NoSQL database for storing the final proctoring reports.
+Storing the final interview reports securely.
 
-🚀 Getting Started
-Follow these instructions to get a local copy of the project up and running for development and testing purposes.
+🚀 How to Run This Project Locally
+Follow this step-by-step guide to get the project running on your local machine.
 
-Prerequisites
-Node.js & npm: Make sure you have Node.js (v16 or later) and npm installed.
+Step 1: Prerequisites
+Ensure you have Node.js (version 16 or higher) installed.
 
-Firebase Account: You will need a free Google Firebase account to set up the database.
+You will need a free Google Firebase account for the database.
 
-⚙️ Configuration & Setup
-1. Clone the Repository
-
+Step 2: Clone the Project
 git clone [YOUR_REPOSITORY_URL]
 cd video-proctoring-system
 
-2. Firebase Setup (Crucial Step)
-The backend needs a way to securely connect to your Firestore database.
+Step 3: Configure Firebase (The Important Part!)
+The backend needs a secret key to connect to your database.
 
-Go to the Firebase Console and create a new project.
+Create a Firebase Project: Go to the Firebase Console and create a new project.
 
-Inside your new project, go to Build > Firestore Database and create a new database. Start it in Test mode.
+Create a Database: In your project, navigate to Build > Firestore Database and click Create database. Start it in Test mode.
 
-Click the gear icon ⚙️ next to "Project Overview" and go to Project settings > Service accounts.
+Generate a Secret Key:
 
-Click "Generate new private key". A JSON file will be downloaded.
+Click the ⚙️ icon (Project settings) > Service accounts.
 
-Move this JSON file into the backend/ directory of the project and rename it to serviceAccountKey.json.
+Click "Generate new private key" and confirm.
 
-Security Note: This key is a secret! The .gitignore file is already configured to ignore this file, but you should never commit it to a public repository.
+Add Key to Project:
 
-3. Backend Installation & Setup
-Open a new terminal and navigate to the backend directory.
+A .json file will be downloaded.
 
-# Navigate to the backend folder
+Move this file into the backend/ folder.
+
+Rename the file to serviceAccountKey.json. The project is pre-configured to look for this exact filename.
+
+🔒 Security: This key file is secret! The project's .gitignore is set up to ignore it, so you won't accidentally commit it to GitHub.
+
+Step 4: Set Up and Run the Backend
+Open a terminal window for the backend.
+
+# 1. Navigate to the backend directory
 cd backend
 
-# Install dependencies
+# 2. Install all necessary packages
 npm install
 
-# Run the development server
+# 3. Start the server
 npm run dev
 
-Your backend server should now be running on http://localhost:8080.
+✅ Your backend should now be running on http://localhost:8080.
 
-4. Frontend Installation & Setup
-Open another terminal and navigate to the frontend directory.
+Step 5: Set Up and Run the Frontend
+Open a second terminal window for the frontend.
 
-# Navigate to the frontend folder
+# 1. Navigate to the frontend directory
 cd frontend
 
-# Install dependencies
+# 2. Install all necessary packages
 npm install
 
-# Run the development server
+# 3. Start the application
 npm run dev
 
-Your frontend React application should now be running and will open in your browser at http://localhost:5173. You can now start the interview.
+✅ Your frontend will automatically open in your browser at http://localhost:5173. You can now start the proctoring session!
