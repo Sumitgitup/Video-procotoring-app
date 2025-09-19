@@ -190,8 +190,15 @@ const CandidateView = ({ setReportId }) => {
           
           await tf.setBackend('webgl');
           
+           const faceDetectorConfig = {
+            runtime: 'mediapipe',
+            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
+            maxFaces: 2, // <-- This line tells the model to detect up to 2 faces
+          };
+
           const [faceDetector, objectDetector] = await Promise.all([
-            faceLandmarksDetection.createDetector(faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh, {
+            faceLandmarksDetection.createDetector(faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+              faceDetectorConfig, {
               runtime: 'mediapipe',
               solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
             }),

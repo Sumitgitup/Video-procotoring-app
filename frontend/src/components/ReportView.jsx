@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable'; // <-- Import the autoTable function directly
 
 // A styled loading spinner component
 const LoadingSpinner = () => (
@@ -94,7 +94,8 @@ const ReportView = ({ reportId, setReportId }) => {
     doc.setTextColor('#000000');
 
     if (report.events.length > 0) {
-      doc.autoTable({
+      // Use autoTable as a function, passing the doc instance to it
+      autoTable(doc, {
         startY: 110,
         head: [['Timestamp', 'Event Description']],
         body: report.events.map(event => [event.timestamp, event.event]),
