@@ -22,48 +22,6 @@ Calculates a final Integrity Score based on the number and type of flagged event
 
 Saves a permanent report to a database for later review.
 
-🛠️ Tech Stack
-This project is a full-stack application that performs all heavy AI processing directly in the user's browser, ensuring privacy and real-time performance.
-
-Component
-
-Technology
-
-Purpose
-
-Frontend
-
-React.js (Vite)
-
-Building the interactive user interface.
-
-AI / ML
-
-TensorFlow.js
-
-Running AI models directly in the browser.
-
-Face Tracking
-
-MediaPipe Face Mesh
-
-To detect facial landmarks for focus analysis.
-
-Object Detection
-
-COCO-SSD Model
-
-To identify unauthorized objects.
-
-Backend
-
-Node.js & Express.js
-
-Creating the API to save and retrieve reports.
-
-Database
-
-Google Firestore
 
 Storing the final interview reports securely.
 
