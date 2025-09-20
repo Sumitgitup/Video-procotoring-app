@@ -1,89 +1,122 @@
-📹 Video Interview Proctoring System
-A smart proctoring tool that uses browser-based AI to monitor candidates during video interviews, ensuring integrity by detecting focus loss and unauthorized items.
+# 📹 Video Interview Proctoring System  
 
-✨ Core Features
-👨‍💻 Real-time Focus Detection:
+A **smart proctoring tool** that uses browser-based AI to monitor candidates during video interviews, ensuring **integrity** by detecting focus loss and unauthorized items.  
 
-Looking Away: Flags when a candidate turns their head away from the screen for more than 5 seconds.
+---
 
-User Absent: Flags when no face is detected in the frame for more than 10 seconds.
+## ✨ Core Features  
 
-Multiple Faces: Instantly flags if more than one face appears in the video.
+### 👨‍💻 **Real-time Focus Detection**  
+- **Looking Away:** Flags when a candidate turns their head away from the screen for more than **5 seconds**.  
+- **User Absent:** Flags when no face is detected for more than **10 seconds**.  
+- **Multiple Faces:** Flags if more than **one face** appears in the video.  
 
-📱 Suspicious Item Detection:
+### 📱 **Suspicious Item Detection**  
+- Identifies unauthorized items such as a **cell phone** or **book** in the candidate's view.  
 
-Identifies unauthorized items like a cell phone or book in the candidate's view.
+### 📄 **Automated Reporting**  
+- **Logs** all suspicious events with **timestamps** in a clean interface.  
+- Calculates a final **Integrity Score** and generates a **downloadable PDF report**.  
+- Saves a permanent report to a **database** for later review.  
 
-📄 Automated Reporting:
+---
 
-Logs all suspicious events with timestamps in a clean interface.
+## 🛠️ Tech Stack  
 
-Calculates a final Integrity Score based on the number and type of flagged events.
+This project is a **full-stack application** that performs all heavy AI processing directly in the **user's browser**, ensuring **privacy** and **real-time performance**.  
 
-Saves a permanent report to a database for later review.
+| **Component**      | **Technology**        | **Purpose**                                   |
+|---------------------|----------------------|-----------------------------------------------|
+| **Frontend**        | React.js (Vite)      | Building the **interactive user interface**.  |
+| **AI / ML**         | TensorFlow.js        | Running **AI models** directly in the browser.|
+| **Face Tracking**   | MediaPipe Face Mesh  | Detect **facial landmarks** for focus analysis.|
+| **Object Detection**| COCO-SSD Model       | Identify **unauthorized objects**.            |
+| **Backend**         | Node.js & Express.js | API to **save and retrieve reports**.         |
+| **Database**        | Google Firestore     | Securely **storing the final reports**.       |
+
+---
+
+## 🚀 How to Run This Project Locally  
+
+Follow this step-by-step guide to run the project on your local machine.  
+
+---
+
+### 🔹 Step 1: **Prerequisites**  
+- Install **Node.js (v18 or higher)**.  
+- Create a free **Google Firebase account** for the database.  
+
+---
+
+### 🔹 Step 2: **Clone the Project**  
+
+`git clone https://github.com/Sumitgitup/Video-procotoring-app.git`
 
 
-Storing the final interview reports securely.
+cd Video-procotoring-app
 
-🚀 How to Run This Project Locally
-Follow this step-by-step guide to get the project running on your local machine.
 
-Step 1: Prerequisites
-Ensure you have Node.js (version 16 or higher) installed.
 
-You will need a free Google Firebase account for the database.
+### 🔹 Step 3: **Configure Firebase (Crucial Step!)**
 
-Step 2: Clone the Project
-git clone [YOUR_REPOSITORY_URL]
-cd video-proctoring-system
+Create a Firebase Project
 
-Step 3: Configure Firebase (The Important Part!)
-The backend needs a secret key to connect to your database.
+Go to the Firebase Console
+ → Create a new project.
 
-Create a Firebase Project: Go to the Firebase Console and create a new project.
+Create a Firestore Database
 
-Create a Database: In your project, navigate to Build > Firestore Database and click Create database. Start it in Test mode.
+Navigate to Build > Firestore Database → Click Create database → Start in Test Mode.
 
-Generate a Secret Key:
+Generate a Secret Key
 
-Click the ⚙️ icon (Project settings) > Service accounts.
+In Firebase, go to Project Settings → Service Accounts.
 
-Click "Generate new private key" and confirm.
+Click Generate new private key → confirm → a .json file will download.
 
-Add Key to Project:
+Add Key to Project
 
-A .json file will be downloaded.
+Move the downloaded .json file into the backend/ folder.
 
-Move this file into the backend/ folder.
+Rename it to:
 
-Rename the file to serviceAccountKey.json. The project is pre-configured to look for this exact filename.
+serviceAccountKey.json
 
-🔒 Security: This key file is secret! The project's .gitignore is set up to ignore it, so you won't accidentally commit it to GitHub.
 
-Step 4: Set Up and Run the Backend
-Open a terminal window for the backend.
+⚠️ Security Note: This key file is secret!
 
-# 1. Navigate to the backend directory
+The .gitignore is already configured to ignore this file, so it won’t be pushed to GitHub.
+
+### 🔹 Step 4: **Set Up and Run the Backend**
+
+Open a terminal for the backend:
+
+## 1. Navigate to backend
 cd backend
 
-# 2. Install all necessary packages
+## 2. Install dependencies
 npm install
 
-# 3. Start the server
+## 3. Start the backend server
 npm run dev
 
-✅ Your backend should now be running on http://localhost:8080.
 
-Step 5: Set Up and Run the Frontend
-Open a second terminal window for the frontend.
+✅ Backend will run at: http://localhost:8080
 
-# 1. Navigate to the frontend directory
+### 🔹 Step 5: **Set Up and Run the Frontend**
+
+Open another terminal for the frontend:
+
+## 1. Navigate to frontend
 cd frontend
 
-# 2. Install all necessary packages
+## 2. Install dependencies
 npm install
 
-# 3. Start the application
+## 3. Start the frontend app
 npm run dev
 
-✅ Your frontend will automatically open in your browser at http://localhost:5173. You can now start the proctoring session!
+
+✅ Frontend will open at: http://localhost:5173
+
+You can now start the proctoring session! 🎥
